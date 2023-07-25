@@ -534,9 +534,9 @@ checksum = "a2eb9349b6444b326872e140eb1cf5e7c522154d69e7a0ffb0fb81c06b37543f"
 
 [[package]]
 name = "statusline"
-version = "0.2.0"
+version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "eaee4106f460cf310a47dd65356814b011b77fd45810c81d9218b5612920c3d4"
+checksum = "59ff1581db035422fa9df8930c4823f0313916d00696b6df46889f1849520913"
 dependencies = [
  "chrono",
  "const_format",

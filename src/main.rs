@@ -1,10 +1,17 @@
+#![feature(let_chains)]
 use rustyline::{
     config::{CompletionType, Config, EditMode},
     history::FileHistory,
     Editor, Result as RlResult,
 };
 use statusline::StatusLine;
-use std::{env, path::PathBuf};
+use std::{
+    env,
+    ops::{Deref, DerefMut},
+    path::PathBuf,
+    sync::{Arc, Mutex},
+    thread,
+};
 
 fn main() -> RlResult<()> {
     println!("Hello, world!");
@@ -30,12 +37,26 @@ fn main() -> RlResult<()> {
 
     loop {
         let sl = StatusLine::from_env::<&str>(&[]);
+        let prompt = sl.to_bottom();
 
         print!("{}\n{}\n", sl.to_title("qqsh"), sl.to_top());
-        // TODO async prompt
+        
+        let stop_async = Arc::new(Mutex::new(false));
+        let stop_async_cloned = Arc::clone(&stop_async);
 
-        let readline = rl.readline(&sl.to_bottom());
-        // TODO stop async prompt
+        // TODO more _correct_ async prompt shutdown
+        let _async_prompt_handle = thread::spawn(move || {
+            let sl = sl.extended();
+            if let Ok(guard) = stop_async_cloned.lock() && !*guard.deref() {
+                eprint!("\x1b[s\x1b[G\x1b[A{}\x1b[u", sl.to_top());
+            };
+        });
+
+        let readline = rl.readline(&prompt);
+        {
+            let mut sa = stop_async.lock().unwrap();
+            *(sa.deref_mut()) = true;
+        }
 
         match &readline {
             Ok(s) if s == "exit" => break,
