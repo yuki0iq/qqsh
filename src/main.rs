@@ -1,9 +1,14 @@
 #![feature(let_chains)]
 use rustyline::{
+    completion::{FilenameCompleter},
     config::{CompletionType, Config, EditMode},
+    error::ReadlineError,
+    highlight::{MatchingBracketHighlighter},
+    hint::{HistoryHinter},
     history::FileHistory,
     Editor, Result as RlResult,
 };
+use rustyline::{Completer, Highlighter, Hinter, Helper, Validator};
 use statusline::StatusLine;
 use std::{
     env,
@@ -13,10 +18,25 @@ use std::{
     thread,
 };
 
+#[derive(Helper, Hinter, Highlighter, Completer, Validator)]
+struct PromptHelper {
+    #[rustyline(Completer)]
+    completer: FilenameCompleter,
+
+    #[rustyline(Highlighter)]
+    highlighter: MatchingBracketHighlighter,
+
+    #[rustyline(Hinter)]
+    hinter: HistoryHinter,
+
+    #[rustyline(Validator)]
+    validator: (),
+}
+
 fn main() -> RlResult<()> {
     println!("Hello, world!");
 
-    let mut rl: Editor<(), FileHistory> = Editor::with_config(
+    let mut rl: Editor<PromptHelper, FileHistory> = Editor::with_config(
         Config::builder()
             .auto_add_history(true)
             .completion_type(CompletionType::List)
@@ -24,6 +44,12 @@ fn main() -> RlResult<()> {
             .tab_stop(4)
             .build(),
     )?;
+    rl.set_helper(Some(PromptHelper {
+        completer: FilenameCompleter::new(),
+        highlighter: MatchingBracketHighlighter::new(),
+        hinter: HistoryHinter{},
+        validator: (),
+    }));
 
     let hist_path = if let Ok(home) = &env::var("HOME") {
         let hist_path = PathBuf::from(String::from(home)).join(".qqsh-history");
@@ -61,6 +87,8 @@ fn main() -> RlResult<()> {
         match &readline {
             Ok(s) if s == "exit" => break,
             Ok(s) => println!("entered command {s}"),
+            Err(ReadlineError::Interrupted) => eprintln!("--> Ctrl-C"),
+            Err(ReadlineError::Eof) => eprintln!("--> <EOF>"),
             Err(err) => eprintln!("Readline error: {err}"),
         }
     }
